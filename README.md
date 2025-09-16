@@ -1,6 +1,8 @@
 # Countdown
 python第三方库，实现到达目标时间执行函数
 
+# 安装
+``pip isntall FuyaoCountdown``
 
 # 使用
 ```python
