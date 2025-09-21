@@ -20,6 +20,7 @@ def job():
 
 
 if __name__ == '__main__':
-    cd = Countdown(datetime.datetime.now().date(), 11, 51)
+    now = datetime.datetime.now()
+    cd = Countdown(now.date(), now.hour, now.minute + 1, nextTime=False)
 
     cd.threadExecutor(True, job)

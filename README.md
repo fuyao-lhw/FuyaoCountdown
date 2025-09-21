@@ -29,6 +29,7 @@ Countdown(
     hour: int 小时,如 5
     minute: int 分钟,如 20
     second: int 秒,如 0
+    nextTime: bool 当前目标时间到达后是否继续进行倒计时任务(明天的目标时间)
 )
 
 Countdown.threadExecutor(
@@ -60,8 +61,14 @@ Countdown  项目名
 
 ## v0.0.2
 修复bug：
+
 1.修复函数传参少的问题
+
 2.修复传入datetime.date类型数据无法解析的问题
-3.修复控制台输出不换行的问题
+
 
 更新：
+
+1.添加对执行到下一个目标时间的可选参数
+
+2.增加日志记录,自动记录日志到调用文件的同级目录下

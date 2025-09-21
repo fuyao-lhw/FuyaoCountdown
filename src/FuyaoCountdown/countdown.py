@@ -17,6 +17,7 @@ import threading
 from threading import Thread
 from typing import Callable, Any
 import inspect
+from FuyaoCountdown import logger
 
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -45,13 +46,14 @@ class Countdown:
             hour: int = 5,
             minute: int = 20,
             second: int = 0,
+            nextTime: bool = True,
     ):
         """
-
-        :param date:
-        :param hour:
-        :param minute:
-        :param second:
+        :param date: 日期
+        :param hour: 小时
+        :param minute: 分钟
+        :param second: 秒
+        :param nextTime: 当前目标时间到达后是否执行到下一个目标时间
         """
 
         # 检查date类型是否为str,为str放行,否则更改为str
@@ -61,12 +63,14 @@ class Countdown:
 
         self.target = datetime.datetime(year, month, day, hour, minute, second)
 
-        # print(self.target)
+        # logger.info(self.target)
 
         self.date = date
         self.hour = self.target.hour
         self.minute = self.target.minute
         self.second = self.target.second
+
+        self.nextTime = nextTime
 
     def execJob(
             self,
@@ -80,9 +84,9 @@ class Countdown:
         :return:
         """
 
-        print("===定时任务已经启动===")
+        logger.info("===定时任务已经启动===")
 
-        print(f"目标时间: {self.target}; 任务启动时间: {datetime.datetime.now().strftime(TIME_FORMAT)}")
+        logger.info(f"目标时间: {self.target}; 任务启动时间: {datetime.datetime.now().strftime(TIME_FORMAT)}")
 
         jobSig = inspect.signature(job)
         jobParams = jobSig.parameters
@@ -92,8 +96,11 @@ class Countdown:
             now = datetime.datetime.now()
 
             if now > self.target:
+                if not self.nextTime:
+                    logger.info("不执行到下一个的目标时间...")
+                    break
                 self.target += timedelta(days=1)
-                print(f"当前时间超过目标时间 ==> 目标天数已经更改: {self.target}")
+                logger.info(f"当前时间超过目标时间 ==> 目标天数已经更改: {self.target}")
                 continue
 
             diff = self.target - now
@@ -101,7 +108,7 @@ class Countdown:
 
             if secondCount <= 0:
                 print(f"目标时间已到达: {self.target}")
-                print("===开始执行任务===")
+                logger.info("===开始执行任务===")
 
                 startTime = time.time()
 
@@ -112,7 +119,7 @@ class Countdown:
 
                 endTime = time.time()
 
-                print(f"{job.__name__}执行完毕, 耗时:{endTime - startTime}")
+                logger.info(f"{job.__name__}执行完毕, 耗时:{endTime - startTime}")
 
             # 格式化显示倒计时
             hours, remainder = divmod(secondCount, 3600)
@@ -142,7 +149,7 @@ class Countdown:
         """
 
         if useTread:
-            print("使用新线程执行任务,当前线程可执行其他任务")
+            logger.info("使用新线程执行任务,当前线程可执行其他任务")
             thread = Thread(
                 target=self.execJob,
                 name="FuyaoCountdown-0",
@@ -152,14 +159,14 @@ class Countdown:
 
             thread.start()
 
-            print(f"目标任务已经在新线程中执行: {thread.name}\n")
+            logger.info(f"目标任务已经在新线程中执行: {thread.name}")
 
             # thread.join()
 
             return thread
 
         else:
-            print(f"目标任务在当前线程执行: {threading.main_thread().name}")
+            logger.info(f"目标任务在当前线程执行: {threading.main_thread().name}")
             self.execJob(job, jobArgs)
 
             return None
