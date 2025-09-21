@@ -41,7 +41,7 @@ class Countdown:
 
     def __init__(
             self,
-            date: datetime = datetime.datetime.date(datetime.datetime.now()),
+            date: datetime = datetime.datetime.now().date(),
             hour: int = 5,
             minute: int = 20,
             second: int = 0,
@@ -53,6 +53,9 @@ class Countdown:
         :param minute:
         :param second:
         """
+
+        # 检查date类型是否为str,为str放行,否则更改为str
+        date = str(date) if type(date) is not str else date
 
         year, month, day = handleDateFormat(date)
 
@@ -103,7 +106,7 @@ class Countdown:
                 startTime = time.time()
 
                 if len(jobParams) > 0:
-                    job(args)
+                    job(*args)
                 else:
                     job()
 
@@ -149,7 +152,7 @@ class Countdown:
 
             thread.start()
 
-            print(f"目标任务已经在新线程中执行: {thread.name}")
+            print(f"目标任务已经在新线程中执行: {thread.name}\n")
 
             # thread.join()
 

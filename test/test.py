@@ -10,6 +10,8 @@ encoding:   -*- coding: utf-8 -*-
 实现步骤
 
 """
+import datetime
+
 from FuyaoCountdown.countdown import Countdown
 
 
@@ -18,6 +20,6 @@ def job():
 
 
 if __name__ == '__main__':
-    cd = Countdown("2025-09-16", 11, 51)
+    cd = Countdown(datetime.datetime.now().date(), 11, 51)
 
     cd.threadExecutor(True, job)
