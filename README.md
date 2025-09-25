@@ -30,10 +30,17 @@ Countdown(
     minute: int 分钟,如 20
     second: int 秒,如 0
     nextTime: bool 当前目标时间到达后是否继续进行倒计时任务(明天的目标时间)
+    threadPoolSize: int 线程池大小
 )
 
+# 线程池执行
 Countdown.threadExecutor(
-    useThread: bool 是否启用新线程
+    job: list[Callable[..., Any]]  可调用的任意对象/函数(任务对象)
+    jobArgs: list[tuple]  任务对象所需的参数
+)
+
+# 主线程执行--阻塞线程
+Countdown.mainExecutor(
     job: Callable[..., Any]  可调用的任意对象/函数(任务对象)
     jobArgs: tuple  任务对象所需的参数
 )
@@ -56,8 +63,13 @@ Countdown  项目名
 
 # 更新日志
 
-## v0.0.1
-1.支持新线程执行任务
+## v0.0.3
+修复bug：
+
+
+更新：
+
+1.新增线程池配置
 
 ## v0.0.2
 修复bug：
@@ -72,3 +84,6 @@ Countdown  项目名
 1.添加对执行到下一个目标时间的可选参数
 
 2.增加日志记录,自动记录日志到调用文件的同级目录下
+
+## v0.0.1
+1.支持新线程执行任务

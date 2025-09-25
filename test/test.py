@@ -12,15 +12,26 @@ encoding:   -*- coding: utf-8 -*-
 """
 import datetime
 
-from FuyaoCountdown.countdown import Countdown
+# from FuyaoCountdown.countdown import Countdown
+from src.FuyaoCountdown.countdown import Countdown
 
 
-def job():
-    print("job is running")
+def job(param=None):
+    print(param)
+
+    print(f"{param} job is running")
+    return {
+        "jobParam": param
+    }
 
 
 if __name__ == '__main__':
     now = datetime.datetime.now()
-    cd = Countdown(now.date(), now.hour, now.minute + 1, nextTime=False)
+    second = now.second
+    cd = Countdown(now.date(), now.hour, now.minute, second=second + 1, nextTime=False)
 
-    cd.threadExecutor(True, job)
+    cd.mainExecutor(job)
+
+    # cd.threadExecutor([job], [(1,), (2,)])
+
+    print(1)

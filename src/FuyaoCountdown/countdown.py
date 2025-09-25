@@ -14,12 +14,13 @@ import datetime
 import time
 from datetime import timedelta
 import threading
-from threading import Thread
 from typing import Callable, Any
 import inspect
-from FuyaoCountdown import logger
+from ..FuyaoCountdown import logger
+from concurrent.futures.thread import ThreadPoolExecutor
 
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+THREAD_NAME = "FuyaoCountdown"
 
 
 def handleDateFormat(dt: str) -> tuple:
@@ -47,6 +48,7 @@ class Countdown:
             minute: int = 20,
             second: int = 0,
             nextTime: bool = True,
+            threadPoolSize: int = 3,
     ):
         """
         :param date: 日期
@@ -54,6 +56,7 @@ class Countdown:
         :param minute: 分钟
         :param second: 秒
         :param nextTime: 当前目标时间到达后是否执行到下一个目标时间
+        :param threadPoolSize: 线程池的大小
         """
 
         # 检查date类型是否为str,为str放行,否则更改为str
@@ -72,24 +75,34 @@ class Countdown:
 
         self.nextTime = nextTime
 
+        self.threadPoolSize = threadPoolSize
+        self.threadPoolExecutor = ThreadPoolExecutor(max_workers=threadPoolSize, thread_name_prefix=THREAD_NAME)
+
+    def __del__(self):
+        """析构函数中关闭线程池"""
+        if hasattr(self, 'threadPoolExecutor') and self.threadPoolExecutor:
+            self.threadPoolExecutor.shutdown(wait=False)
+
     def execJob(
             self,
             job: Callable[..., Any],
-            *args
+            jobArgs: tuple,
     ):
         """
         执行任务
         :param job: 任务函数
-        :param args: 函数的参数
+        :param jobArgs: 任务函数的参数
         :return:
         """
 
-        logger.info("===定时任务已经启动===")
+        logger.info("定时任务已经启动")
 
         logger.info(f"目标时间: {self.target}; 任务启动时间: {datetime.datetime.now().strftime(TIME_FORMAT)}")
 
         jobSig = inspect.signature(job)
         jobParams = jobSig.parameters
+
+        jobResult = None
 
         while True:
 
@@ -107,15 +120,16 @@ class Countdown:
             secondCount = int(diff.total_seconds())
 
             if secondCount <= 0:
-                print(f"目标时间已到达: {self.target}")
-                logger.info("===开始执行任务===")
+                logger.info(f"目标时间已到达: {self.target}")
 
                 startTime = time.time()
 
+                logger.info(f"开始执行任务")
+
                 if len(jobParams) > 0:
-                    job(*args)
+                    jobResult = job(*jobArgs)
                 else:
-                    job()
+                    jobResult = job()
 
                 endTime = time.time()
 
@@ -130,43 +144,73 @@ class Countdown:
             # 每秒检查一次
             time.sleep(1)
 
-    def threadExecutor(
+        return jobResult
+
+    def mainExecutor(
             self,
-            useTread: bool = True,
             job: Callable[..., Any] = None,
             jobArgs: tuple = (),
+    ):
+        """
+        主线程执行器：使用主线程执行任务--阻塞
+        :param job:
+        :param jobArgs:
+        :return:
+        """
+
+        logger.info(f"目标任务在当前线程(主线程)执行: {threading.main_thread().name}")
+        self.execJob(job, jobArgs)
+
+        return None
+
+    def threadExecutor(
+            self,
+            jobList: list[Callable[..., Any]] = None,
+            jobArgs: list[tuple] = None,
             *args,
             **kwargs,
     ):
         """
-        使用线程执行任务
-        :param useTread: 是否新开线程
-        :param job: 被执行的任务函数
+        线程执行器
+        :param jobList: 任务函数的列表
         :param jobArgs: 任务函数的参数
         :param args: 当前函数的参数
         :param kwargs:
         :return:
         """
 
-        if useTread:
-            logger.info("使用新线程执行任务,当前线程可执行其他任务")
-            thread = Thread(
-                target=self.execJob,
-                name="FuyaoCountdown-0",
-                args=(job,) + jobArgs,
-                daemon=False,
-            )
+        if jobList is None or len(jobList) == 0:
+            raise ValueError("任务函数列表不允许为空!")
 
-            thread.start()
+        if len(jobList) != len(jobArgs):
+            logger.warn(f"任务函数列表与参数列表长度不等!执行前{min(len(jobList), len(jobArgs))}个任务函数")
 
-            logger.info(f"目标任务已经在新线程中执行: {thread.name}")
+        # 检查线程池是否可用
+        if self.threadPoolExecutor is None or self.threadPoolExecutor._shutdown:
+            raise RuntimeError("线程池已关闭，无法提交新任务")
 
-            # thread.join()
+        logger.info("使用线程池执行任务,主线程可执行其他任务")
+        logger.info(f"当前线程池大小: {self.threadPoolSize}")
 
-            return thread
+        jobResult = []
 
-        else:
-            logger.info(f"目标任务在当前线程执行: {threading.main_thread().name}")
-            self.execJob(job, jobArgs)
+        for result in self.threadPoolExecutor.map(self.execJob, jobList, jobArgs):
+            jobResult.append(result)
 
-            return None
+        logger.info(f"线程池执行结果: {jobResult}")
+
+        # logger.info("使用新线程执行任务,当前线程可执行其他任务")
+        # thread = Thread(
+        #     target=self.execJob,
+        #     name=f"{THREAD_NAME}-oneThread",
+        #     args=(job,) + jobArgs,
+        #     daemon=False,
+        # )
+        #
+        # thread.start()
+        #
+        # logger.info(f"目标任务已经在新线程中执行: {thread.name}")
+        #
+        # # thread.join()
+        #
+        # return thread
