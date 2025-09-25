@@ -39,7 +39,7 @@ Countdown(
     minute: int 分钟,如 20
     second: int 秒,如 0
     nextTime: bool 当前目标时间到达后是否继续进行倒计时任务(明天的目标时间)
-    threadPoolSize: int 线程池大小
+    threadPoolSize: int 线程池大小(默认3)
 )
 
 # 线程池执行
