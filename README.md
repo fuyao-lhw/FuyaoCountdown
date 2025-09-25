@@ -7,16 +7,25 @@ python第三方库，实现到达目标时间执行函数
 # 使用
 ```python
 from FuyaoCountdown.countdown import Countdown
+import datetime
 
+def job(param=None):
+    print(param)
 
-def job():
-    print("job is running")
+    print(f"{param} job is running")
+    return {
+        "jobParam": param
+    }
 
 
 if __name__ == '__main__':
-    cd = Countdown("2025-09-16", 5, 20)
+    now = datetime.datetime.now()
+    second = now.second
+    cd = Countdown(now.date(), now.hour, now.minute, second=second + 1, nextTime=False)
 
-    cd.threadExecutor(True, job)
+    # cd.mainExecutor(job)
+
+    cd.threadExecutor([job], [(1,)])
 
 
 ```
