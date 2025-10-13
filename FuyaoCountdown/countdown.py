@@ -16,11 +16,26 @@ from datetime import timedelta
 import threading
 from typing import Callable, Any
 import inspect
-from ..FuyaoCountdown import logger
 from concurrent.futures.thread import ThreadPoolExecutor
+from FuyaoLogger.logger import fuyaoLogger
+from FuyaoCountdown import LOG_FILE_PATH_KEY, LOG_FILE_PATH
+from FuyaoCountdown.utils.configFileUtil import checkFile, readConfig, addConfig
 
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 THREAD_NAME = "FuyaoCountdown"
+
+
+def _setLogFilePath(logFilePath=LOG_FILE_PATH):
+    checkFile(logFilePath)
+
+    addConfig(key=LOG_FILE_PATH_KEY, value=str(LOG_FILE_PATH))
+
+    @fuyaoLogger(logFilePath=logFilePath)
+    def getLogger():
+        global log
+        return log
+
+    return getLogger()
 
 
 def handleDateFormat(dt: str) -> tuple:
@@ -51,6 +66,7 @@ class Countdown:
             threadPoolSize: int = 3,
     ):
         """
+        :type logFilePath: 日志文件路径,默认在调用脚本的同级目录下生成 FuyaoCountdown.log
         :param date: 日期
         :param hour: 小时
         :param minute: 分钟
@@ -66,7 +82,7 @@ class Countdown:
 
         self.target = datetime.datetime(year, month, day, hour, minute, second)
 
-        # logger.info(self.target)
+        # self.logger.info(self.target)
 
         self.date = date
         self.hour = self.target.hour
@@ -78,6 +94,11 @@ class Countdown:
         self.threadPoolSize = threadPoolSize
         self.threadPoolExecutor = ThreadPoolExecutor(max_workers=threadPoolSize, thread_name_prefix=THREAD_NAME)
 
+        self.logger = _setLogFilePath()
+
+    def setLogFilePath(self, logFilePath):
+        self.logger = _setLogFilePath(logFilePath)
+
     def __del__(self):
         """析构函数中关闭线程池"""
         if hasattr(self, 'threadPoolExecutor') and self.threadPoolExecutor:
@@ -86,7 +107,7 @@ class Countdown:
     def execJob(
             self,
             job: Callable[..., Any],
-            jobArgs: tuple,
+            jobArgs: tuple = None,
     ):
         """
         执行任务
@@ -95,9 +116,9 @@ class Countdown:
         :return:
         """
 
-        logger.info("定时任务已经启动")
+        self.logger.info("定时任务已经启动")
 
-        logger.info(f"目标时间: {self.target}; 任务启动时间: {datetime.datetime.now().strftime(TIME_FORMAT)}")
+        self.logger.info(f"目标时间: {self.target}; 任务启动时间: {datetime.datetime.now().strftime(TIME_FORMAT)}")
 
         jobSig = inspect.signature(job)
         jobParams = jobSig.parameters
@@ -110,21 +131,21 @@ class Countdown:
 
             if now > self.target:
                 if not self.nextTime:
-                    logger.info("不执行到下一个的目标时间...")
+                    self.logger.info("不执行到下一个的目标时间...")
                     break
                 self.target += timedelta(days=1)
-                logger.info(f"当前时间超过目标时间 ==> 目标天数已经更改: {self.target}")
+                self.logger.info(f"当前时间超过目标时间 ==> 目标天数已经更改: {self.target}")
                 continue
 
             diff = self.target - now
             secondCount = int(diff.total_seconds())
 
             if secondCount <= 0:
-                logger.info(f"目标时间已到达: {self.target}")
+                self.logger.info(f"目标时间已到达: {self.target}")
 
                 startTime = time.time()
 
-                logger.info(f"开始执行任务")
+                self.logger.info(f"开始执行任务")
 
                 if len(jobParams) > 0:
                     jobResult = job(*jobArgs)
@@ -133,7 +154,7 @@ class Countdown:
 
                 endTime = time.time()
 
-                logger.info(f"{job.__name__}执行完毕, 耗时:{endTime - startTime}")
+                self.logger.info(f"{job.__name__}执行完毕, 耗时:{endTime - startTime}")
 
             # 格式化显示倒计时
             hours, remainder = divmod(secondCount, 3600)
@@ -158,7 +179,7 @@ class Countdown:
         :return:
         """
 
-        logger.info(f"目标任务在当前线程(主线程)执行: {threading.main_thread().name}")
+        self.logger.info(f"目标任务在当前线程(主线程)执行: {threading.main_thread().name}")
         self.execJob(job, jobArgs)
 
         return None
@@ -183,23 +204,23 @@ class Countdown:
             raise ValueError("任务函数列表不允许为空!")
 
         if len(jobList) != len(jobArgs):
-            logger.warn(f"任务函数列表与参数列表长度不等!执行前{min(len(jobList), len(jobArgs))}个任务函数")
+            self.logger.warn(f"任务函数列表与参数列表长度不等!执行前{min(len(jobList), len(jobArgs))}个任务函数")
 
         # 检查线程池是否可用
         if self.threadPoolExecutor is None or self.threadPoolExecutor._shutdown:
             raise RuntimeError("线程池已关闭，无法提交新任务")
 
-        logger.info("使用线程池执行任务,主线程可执行其他任务")
-        logger.info(f"当前线程池大小: {self.threadPoolSize}")
+        self.logger.info("使用线程池执行任务,主线程可执行其他任务")
+        self.logger.info(f"当前线程池大小: {self.threadPoolSize}")
 
         jobResult = []
 
         for result in self.threadPoolExecutor.map(self.execJob, jobList, jobArgs):
             jobResult.append(result)
 
-        logger.info(f"线程池执行结果: {jobResult}")
+        self.logger.info(f"线程池执行结果: {jobResult}")
 
-        # logger.info("使用新线程执行任务,当前线程可执行其他任务")
+        # self.logger.info("使用新线程执行任务,当前线程可执行其他任务")
         # thread = Thread(
         #     target=self.execJob,
         #     name=f"{THREAD_NAME}-oneThread",
@@ -209,7 +230,7 @@ class Countdown:
         #
         # thread.start()
         #
-        # logger.info(f"目标任务已经在新线程中执行: {thread.name}")
+        # self.logger.info(f"目标任务已经在新线程中执行: {thread.name}")
         #
         # # thread.join()
         #

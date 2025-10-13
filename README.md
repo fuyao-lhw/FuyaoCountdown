@@ -54,14 +54,25 @@ Countdown.mainExecutor(
     jobArgs: tuple  任务对象所需的参数
 )
 
+# 普通执行
+Countdown.execJob(
+    job,
+    jobArgs
+)
+
+# 配置日志文件路径
+Countdown.setLogFilePath(
+    logFilePath: str 日志文件的路径
+)
+
 ```
 
 
 # 项目结构
 ```text
 Countdown  项目名
-    src  源代码
-        FuyaoCountdown  软件包
+    FuyaoCountdown  软件包
+    test  测试代码文件夹
     pyproject.toml  打包信息
     README.md  说明文件
     
@@ -79,6 +90,8 @@ Countdown  项目名
 更新：
 
 1.新增线程池配置
+
+2.新增日志文件路径配置
 
 ## v0.0.2
 修复bug：

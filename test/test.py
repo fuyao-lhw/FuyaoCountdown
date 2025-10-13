@@ -11,9 +11,8 @@ encoding:   -*- coding: utf-8 -*-
 
 """
 import datetime
-
-# from FuyaoCountdown.countdown import Countdown
-from src.FuyaoCountdown.countdown import Countdown
+from FuyaoCountdown.countdown import Countdown
+from FuyaoCountdown import callerDir
 
 
 def job(param=None):
@@ -28,6 +27,7 @@ def job(param=None):
 if __name__ == '__main__':
     now = datetime.datetime.now()
     second = now.second
+
     cd = Countdown(now.date(), now.hour, now.minute, second=second + 1, nextTime=False)
 
     cd.mainExecutor(job)
